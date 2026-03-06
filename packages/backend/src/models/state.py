@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Any, Optional
 
-from langgraph.graph import MessagesState
 from pydantic import BaseModel, Field
 
 from .project import ProjectJSON
@@ -22,18 +21,21 @@ class AuthorPlan(str, Enum):
     clarify = "clarify"
 
 
-class ProjectAuthoringState(MessagesState):
-    """State flowing through the project authoring LangGraph workflow.
+class ProjectAuthoringState(BaseModel):
+    """State flowing through the project authoring LangGraph workflow."""
 
-    Extends MessagesState so `messages` is managed automatically with
-    the LangGraph message-list reducer.
-    """
-
+    # Input
+    user_prompt: str = ""
     project: Optional[ProjectJSON] = None
+
+    # Internal
     plan: Optional[AuthorPlan] = None
     validation_errors: list[str] = Field(default_factory=list)
     retry_count: int = 0
-    response_text: Optional[str] = None
+
+    # Output
+    updated_project: Optional[ProjectJSON] = None
+    response_text: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +47,7 @@ class CompileUnit(BaseModel):
 
     element_type: str  # "floor_slab", "wall", "opening", "roof"
     element_id: str
-    data: dict  # raw dict from the project element
+    data: dict[str, Any]  # raw dict from the project element
 
 
 class GeometryCompilationState(BaseModel):
@@ -54,4 +56,4 @@ class GeometryCompilationState(BaseModel):
     project: ProjectJSON
     compile_units: list[CompileUnit] = Field(default_factory=list)
     scene: Optional[SceneJSON] = None
-    errors: list[str] = Field(default_factory=list)
+    validation_errors: list[str] = Field(default_factory=list)

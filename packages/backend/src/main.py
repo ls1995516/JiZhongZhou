@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,10 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes import create_router
 from .compiler.scene_compiler import DefaultSceneCompiler
+from .graphs.geometry_compilation import build_geometry_compilation_graph
+from .graphs.project_authoring import build_project_authoring_graph
+from .services.agent_provider import create_agent_provider
 from .services.project_service import ProjectService
 from .services.scene_service import SceneService
 from .storage.project_store import FileProjectStore
 from .validators.project_validator import DefaultProjectValidator
+from .validators.scene_validator import DefaultSceneValidator
+
+logging.basicConfig(level=logging.INFO)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "projects"
 
@@ -34,13 +41,36 @@ def create_app() -> FastAPI:
 
     # --- Dependency wiring ---
     store = FileProjectStore(base_dir=DATA_DIR)
-    validator = DefaultProjectValidator()
+    project_validator = DefaultProjectValidator()
+    scene_validator = DefaultSceneValidator()
     compiler = DefaultSceneCompiler()
 
-    project_service = ProjectService(store=store, validator=validator)
+    # Agent provider — selected via AI_PROVIDER env var.
+    # Defaults to OpenAI if OPENAI_API_KEY is set, otherwise falls back to mock.
+    # See .env.example for configuration options.
+    agent = create_agent_provider()
+
+    project_service = ProjectService(store=store, validator=project_validator)
     scene_service = SceneService(compiler=compiler)
 
-    router = create_router(project_service, scene_service)
+    # --- Build LangGraph workflows ---
+    authoring_graph = build_project_authoring_graph(
+        agent=agent,
+        validator=project_validator,
+        store=store,
+    )
+    compilation_graph = build_geometry_compilation_graph(
+        agent=agent,
+        scene_validator=scene_validator,
+    )
+
+    # --- Routes ---
+    router = create_router(
+        project_service=project_service,
+        scene_service=scene_service,
+        authoring_graph=authoring_graph,
+        compilation_graph=compilation_graph,
+    )
     app.include_router(router)
 
     @app.get("/health")
