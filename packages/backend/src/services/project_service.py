@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime
 
 from ..models.project import BuildingInfo, Floor, Polygon, ProjectJSON, ProjectMetadata, Vector2
-from ..storage.project_store import ProjectStore
+from ..models.scene import SceneJSON
+from ..storage.project_store import ProjectStore, StoredProjectRecord, StoredProjectSummary
 from ..validators.project_validator import ProjectValidator
 
 
@@ -49,19 +50,37 @@ class ProjectService:
         if errors:
             raise ValueError(f"Default project failed validation: {errors}")
 
-        await self._store.save(project)
+        await self._store.save_project_schema(project)
         return project
 
     async def get_project(self, project_id: str) -> ProjectJSON | None:
-        return await self._store.load(project_id)
+        return await self._store.load_project_schema(project_id)
+
+    async def get_project_bundle(self, project_id: str) -> StoredProjectRecord | None:
+        return await self._store.load_bundle(project_id)
 
     async def save_project(self, project: ProjectJSON) -> list[str]:
         """Validate and save. Returns validation errors (empty = success)."""
         errors = self._validator.validate(project)
         if not errors:
             project.metadata.updated_at = datetime.utcnow()
-            await self._store.save(project)
+            await self._store.save_project_schema(project)
         return errors
 
-    async def list_projects(self) -> list[str]:
-        return await self._store.list_ids()
+    async def save_project_bundle(
+        self,
+        project: ProjectJSON,
+        scene: SceneJSON | None,
+    ) -> list[str]:
+        """Validate and save the project schema and optional render scene."""
+        errors = self._validator.validate(project)
+        if not errors:
+            project.metadata.updated_at = datetime.utcnow()
+            await self._store.save_bundle(project, scene)
+        return errors
+
+    async def save_render_scene(self, project_id: str, scene: SceneJSON) -> None:
+        await self._store.save_render_scene(project_id, scene)
+
+    async def list_projects(self) -> list[StoredProjectSummary]:
+        return await self._store.list_projects()

@@ -2,6 +2,9 @@
 
 import type {
   CreateProjectRequest,
+  SaveProjectRequest,
+  SavedProjectMetadata,
+  SavedProjectResponse,
   ProjectResponse,
   SceneResponse,
   TurnResponse,
@@ -31,12 +34,22 @@ export async function createProject(
   });
 }
 
-export async function getProject(id: string): Promise<ProjectResponse> {
-  return request<ProjectResponse>(`/projects/${id}`);
+export async function getProject(id: string): Promise<SavedProjectResponse> {
+  return request<SavedProjectResponse>(`/projects/${id}`);
 }
 
-export async function listProjects(): Promise<string[]> {
-  return request<string[]>("/projects");
+export async function listProjects(): Promise<SavedProjectMetadata[]> {
+  return request<SavedProjectMetadata[]>("/projects");
+}
+
+export async function saveProject(
+  projectId: string,
+  req: SaveProjectRequest
+): Promise<SavedProjectResponse> {
+  return request<SavedProjectResponse>(`/projects/${projectId}/save`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
 }
 
 export async function sendTurn(

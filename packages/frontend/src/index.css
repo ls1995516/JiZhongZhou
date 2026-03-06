@@ -62,18 +62,31 @@ body,
   gap: 8px;
 }
 
-.toolbar__actions button {
+.toolbar__actions button,
+.toolbar__select {
   padding: 4px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-alt);
   color: var(--text);
-  cursor: pointer;
   font-size: 13px;
+}
+
+.toolbar__actions button {
+  cursor: pointer;
 }
 
 .toolbar__actions button:hover {
   background: var(--accent-dim);
+}
+
+.toolbar__actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar__select {
+  min-width: 150px;
 }
 
 /* ---------- App body (3-column layout) ---------- */

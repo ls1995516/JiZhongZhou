@@ -1,7 +1,7 @@
 /** Global app state using Zustand. */
 
 import { create } from "zustand";
-import type { ProjectJSON, SceneJSON } from "../types";
+import type { ProjectJSON, SavedProjectMetadata, SceneJSON } from "../types";
 import * as api from "../api/client";
 
 export interface ChatMessage {
@@ -17,10 +17,12 @@ interface AppState {
 
   // Scene
   scene: SceneJSON | null;
+  savedProjects: SavedProjectMetadata[];
 
   // Chat
   messages: ChatMessage[];
   isSending: boolean;
+  isSaving: boolean;
 
   // Inspector
   showInspector: boolean;
@@ -28,6 +30,8 @@ interface AppState {
   // Actions
   createProject: (name: string) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  saveProject: () => Promise<void>;
+  refreshProjects: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
   compileScene: () => Promise<void>;
   toggleInspector: () => void;
@@ -42,17 +46,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   projectId: null,
   project: null,
   scene: null,
+  savedProjects: [],
   messages: [],
   isSending: false,
+  isSaving: false,
   showInspector: false,
 
   createProject: async (name: string) => {
     const { project } = await api.createProject({ name });
     const { scene } = await api.compileScene(project.id);
+    const savedProjects = await api.listProjects();
     set({
       projectId: project.id,
       project,
       scene,
+      savedProjects,
       messages: [
         {
           id: makeId(),
@@ -64,9 +72,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadProject: async (id: string) => {
-    const { project } = await api.getProject(id);
-    const { scene } = await api.compileScene(project.id);
-    set({ projectId: id, project, scene });
+    const saved = await api.getProject(id);
+    const scene =
+      saved.scene ?? (await api.compileScene(saved.project.id)).scene;
+    set({
+      projectId: id,
+      project: saved.project,
+      scene,
+    });
+  },
+
+  saveProject: async () => {
+    const { projectId, project, scene } = get();
+    if (!projectId || !project) return;
+
+    set({ isSaving: true });
+    try {
+      const saved = await api.saveProject(projectId, {
+        project,
+        scene,
+      });
+      const savedProjects = await api.listProjects();
+      set({
+        project: saved.project,
+        scene: saved.scene ?? scene,
+        savedProjects,
+        isSaving: false,
+      });
+    } catch (err) {
+      const errorMsg: ChatMessage = {
+        id: makeId(),
+        role: "assistant",
+        content: `Save failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+      set((s) => ({
+        messages: [...s.messages, errorMsg],
+        isSaving: false,
+      }));
+    }
+  },
+
+  refreshProjects: async () => {
+    const savedProjects = await api.listProjects();
+    set({ savedProjects });
   },
 
   sendMessage: async (text: string) => {
@@ -87,8 +135,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         messages: [...s.messages, assistantMsg],
         project: turn.project,
         scene: turn.scene,
+        savedProjects: s.savedProjects,
         isSending: false,
       }));
+      const savedProjects = await api.listProjects();
+      set({ savedProjects });
     } catch (err) {
       const errorMsg: ChatMessage = {
         id: makeId(),

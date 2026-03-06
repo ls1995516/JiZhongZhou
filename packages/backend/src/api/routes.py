@@ -10,15 +10,49 @@ from fastapi import APIRouter, HTTPException
 from ..models.api import (
     CreateProjectRequest,
     ProjectResponse,
+    SaveProjectRequest,
+    SavedProjectMetadata,
+    SavedProjectResponse,
     SceneResponse,
     TurnResponse,
     UpdateProjectRequest,
 )
+from ..storage.project_store import StoredProjectRecord, StoredProjectSummary
 from ..models.state import GeometryCompilationState, ProjectAuthoringState
 from ..services.project_service import ProjectService
 from ..services.scene_service import SceneService
 
 logger = logging.getLogger(__name__)
+
+
+def _to_saved_metadata(summary: StoredProjectSummary) -> SavedProjectMetadata:
+    return SavedProjectMetadata(
+        project_id=summary.project_id,
+        name=summary.name,
+        description=summary.description,
+        created_at=summary.created_at,
+        updated_at=summary.updated_at,
+        last_saved_at=summary.last_saved_at,
+        has_render_scene=summary.has_render_scene,
+    )
+
+
+def _to_saved_response(record: StoredProjectRecord) -> SavedProjectResponse:
+    summary = StoredProjectSummary(
+        project_id=record.metadata.get("project_id", record.project.id),
+        name=record.metadata.get("name", record.project.metadata.name),
+        description=record.metadata.get("description", record.project.metadata.description),
+        created_at=record.metadata.get("created_at"),
+        updated_at=record.metadata.get("updated_at"),
+        last_saved_at=record.metadata.get("last_saved_at"),
+        has_render_scene=bool(record.metadata.get("has_render_scene", record.scene is not None)),
+    )
+    return SavedProjectResponse(
+        project=record.project,
+        scene=record.scene,
+        metadata=_to_saved_metadata(summary),
+        history=record.history,
+    )
 
 
 def create_router(
@@ -46,13 +80,29 @@ def create_router(
         )
         return ProjectResponse(project=project)
 
-    @r.get("/projects/{project_id}", response_model=ProjectResponse)
-    async def get_project(project_id: str) -> ProjectResponse:
-        """Retrieve a project by ID."""
-        project = await project_service.get_project(project_id)
-        if project is None:
+    @r.post("/projects/{project_id}/save", response_model=SavedProjectResponse)
+    async def save_project(project_id: str, req: SaveProjectRequest) -> SavedProjectResponse:
+        """Persist the current project schema and optional render scene."""
+        if req.project.id != project_id:
+            raise HTTPException(status_code=400, detail="Project ID mismatch")
+
+        errors = await project_service.save_project_bundle(req.project, req.scene)
+        if errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": errors})
+
+        record = await project_service.get_project_bundle(project_id)
+        if record is None:
+            raise HTTPException(status_code=500, detail="Project save failed")
+
+        return _to_saved_response(record)
+
+    @r.get("/projects/{project_id}", response_model=SavedProjectResponse)
+    async def get_project(project_id: str) -> SavedProjectResponse:
+        """Retrieve a persisted project and its saved render scene by ID."""
+        record = await project_service.get_project_bundle(project_id)
+        if record is None:
             raise HTTPException(status_code=404, detail="Project not found")
-        return ProjectResponse(project=project)
+        return _to_saved_response(record)
 
     @r.post("/projects/{project_id}/turn", response_model=TurnResponse)
     async def update_project(project_id: str, req: UpdateProjectRequest) -> TurnResponse:
@@ -90,6 +140,10 @@ def create_router(
         if compilation_errors:
             logger.warning("Scene compilation had validation warnings: %s", compilation_errors)
 
+        save_errors = await project_service.save_project_bundle(updated_project, scene)
+        if save_errors:
+            raise HTTPException(status_code=400, detail={"validation_errors": save_errors})
+
         return TurnResponse(
             assistant_message=response_text,
             project=updated_project,
@@ -111,12 +165,13 @@ def create_router(
 
         from ..models.scene import SceneJSON
         scene = SceneJSON.model_validate(compilation_result["scene"])
+        await project_service.save_render_scene(project_id, scene)
 
         return SceneResponse(scene=scene)
 
-    @r.get("/projects", response_model=list[str])
-    async def list_projects() -> list[str]:
-        """List all project IDs."""
-        return await project_service.list_projects()
+    @r.get("/projects", response_model=list[SavedProjectMetadata])
+    async def list_projects() -> list[SavedProjectMetadata]:
+        """List all saved projects with lightweight metadata."""
+        return [_to_saved_metadata(summary) for summary in await project_service.list_projects()]
 
     return r

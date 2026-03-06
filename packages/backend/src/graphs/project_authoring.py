@@ -200,7 +200,7 @@ def make_nodes(
     async def persist(state: ProjectAuthoringState) -> dict[str, Any]:
         """Save the validated project to the store."""
         if state.updated_project is not None:
-            await store.save(state.updated_project)
+            await store.save_project_schema(state.updated_project)
             logger.info("Persisted project %s", state.updated_project.id)
         return {}
 

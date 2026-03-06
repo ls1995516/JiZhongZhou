@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .project import ProjectJSON
 from .scene import SceneJSON
@@ -23,12 +23,34 @@ class UpdateProjectRequest(BaseModel):
     prompt: str  # natural-language user instruction
 
 
+class SaveProjectRequest(BaseModel):
+    project: ProjectJSON
+    scene: Optional[SceneJSON] = None
+
+
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------
 
 class ProjectResponse(BaseModel):
     project: ProjectJSON
+
+
+class SavedProjectMetadata(BaseModel):
+    project_id: str
+    name: str
+    description: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    last_saved_at: Optional[str] = None
+    has_render_scene: bool = False
+
+
+class SavedProjectResponse(BaseModel):
+    project: ProjectJSON
+    scene: Optional[SceneJSON] = None
+    metadata: SavedProjectMetadata
+    history: list[dict] = Field(default_factory=list)
 
 
 class SceneResponse(BaseModel):
