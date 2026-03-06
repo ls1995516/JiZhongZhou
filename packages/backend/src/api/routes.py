@@ -8,8 +8,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from ..models.api import (
+    CreateReferenceRequest,
     CreateProjectRequest,
     ProjectResponse,
+    ReferenceResponse,
     SaveProjectRequest,
     SavedProjectMetadata,
     SavedProjectResponse,
@@ -17,9 +19,11 @@ from ..models.api import (
     TurnResponse,
     UpdateProjectRequest,
 )
+from ..models.reference import ReferenceMetadata
 from ..storage.project_store import StoredProjectRecord, StoredProjectSummary
 from ..models.state import GeometryCompilationState, ProjectAuthoringState
 from ..services.project_service import ProjectService
+from ..services.reference_service import ReferenceService
 from ..services.scene_service import SceneService
 
 logger = logging.getLogger(__name__)
@@ -57,6 +61,7 @@ def _to_saved_response(record: StoredProjectRecord) -> SavedProjectResponse:
 
 def create_router(
     project_service: ProjectService,
+    reference_service: ReferenceService,
     scene_service: SceneService,
     authoring_graph: Any,
     compilation_graph: Any,
@@ -65,6 +70,7 @@ def create_router(
 
     Args:
         project_service: Project CRUD operations.
+        reference_service: Reference library operations.
         scene_service: Direct scene compilation (no LangGraph).
         authoring_graph: Compiled LangGraph for project authoring (WF1).
         compilation_graph: Compiled LangGraph for geometry compilation (WF2).
@@ -78,6 +84,39 @@ def create_router(
         project = await project_service.create_project(
             name=req.name, description=req.description
         )
+        return ProjectResponse(project=project)
+
+    @r.get("/references", response_model=list[ReferenceMetadata])
+    async def list_references() -> list[ReferenceMetadata]:
+        """List curated reusable references."""
+        return await reference_service.list_references()
+
+    @r.get("/references/{reference_id}", response_model=ReferenceResponse)
+    async def get_reference(reference_id: str) -> ReferenceResponse:
+        """Load a single curated reference by ID."""
+        record = await reference_service.get_reference(reference_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Reference not found")
+        return ReferenceResponse(metadata=record.metadata, project=record.project)
+
+    @r.post("/references", response_model=ReferenceResponse)
+    async def create_reference(req: CreateReferenceRequest) -> ReferenceResponse:
+        """Create or update a curated reference from an existing user project."""
+        try:
+            record = await reference_service.create_reference_from_project(
+                metadata=req.metadata,
+                source_project_id=req.source_project_id,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return ReferenceResponse(metadata=record.metadata, project=record.project)
+
+    @r.post("/references/{reference_id}/load", response_model=ProjectResponse)
+    async def load_reference_into_workspace(reference_id: str) -> ProjectResponse:
+        """Clone a curated reference into user project storage."""
+        project = await reference_service.instantiate_reference(reference_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Reference not found")
         return ProjectResponse(project=project)
 
     @r.post("/projects/{project_id}/save", response_model=SavedProjectResponse)

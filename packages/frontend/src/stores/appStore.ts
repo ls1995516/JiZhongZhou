@@ -1,7 +1,12 @@
 /** Global app state using Zustand. */
 
 import { create } from "zustand";
-import type { ProjectJSON, SavedProjectMetadata, SceneJSON } from "../types";
+import type {
+  ProjectJSON,
+  ReferenceMetadata,
+  SavedProjectMetadata,
+  SceneJSON,
+} from "../types";
 import * as api from "../api/client";
 
 export interface ChatMessage {
@@ -18,6 +23,7 @@ interface AppState {
   // Scene
   scene: SceneJSON | null;
   savedProjects: SavedProjectMetadata[];
+  references: ReferenceMetadata[];
 
   // Chat
   messages: ChatMessage[];
@@ -26,15 +32,19 @@ interface AppState {
 
   // Inspector
   showInspector: boolean;
+  showReferences: boolean;
 
   // Actions
   createProject: (name: string) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  loadReference: (id: string) => Promise<void>;
   saveProject: () => Promise<void>;
   refreshProjects: () => Promise<void>;
+  refreshReferences: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
   compileScene: () => Promise<void>;
   toggleInspector: () => void;
+  toggleReferences: () => void;
 }
 
 let msgCounter = 0;
@@ -47,10 +57,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   project: null,
   scene: null,
   savedProjects: [],
+  references: [],
   messages: [],
   isSending: false,
   isSaving: false,
   showInspector: false,
+  showReferences: true,
 
   createProject: async (name: string) => {
     const { project } = await api.createProject({ name });
@@ -79,6 +91,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       projectId: id,
       project: saved.project,
       scene,
+    });
+  },
+
+  loadReference: async (id: string) => {
+    const { project } = await api.loadReference(id);
+    const { scene } = await api.compileScene(project.id);
+    const savedProjects = await api.listProjects();
+    set({
+      projectId: project.id,
+      project,
+      scene,
+      savedProjects,
+      messages: [
+        {
+          id: makeId(),
+          role: "assistant",
+          content: `Loaded reference "${project.metadata.name}" into a new workspace project.`,
+        },
+      ],
     });
   },
 
@@ -115,6 +146,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshProjects: async () => {
     const savedProjects = await api.listProjects();
     set({ savedProjects });
+  },
+
+  refreshReferences: async () => {
+    const references = await api.listReferences();
+    set({ references });
   },
 
   sendMessage: async (text: string) => {
@@ -161,4 +197,5 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleInspector: () => set((s) => ({ showInspector: !s.showInspector })),
+  toggleReferences: () => set((s) => ({ showReferences: !s.showReferences })),
 }));

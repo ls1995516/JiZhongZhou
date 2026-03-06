@@ -7,6 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .project import ProjectJSON
+from .reference import ReferenceMetadata
 from .scene import SceneJSON
 
 
@@ -26,6 +27,11 @@ class UpdateProjectRequest(BaseModel):
 class SaveProjectRequest(BaseModel):
     project: ProjectJSON
     scene: Optional[SceneJSON] = None
+
+
+class CreateReferenceRequest(BaseModel):
+    metadata: ReferenceMetadata
+    source_project_id: str
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +57,11 @@ class SavedProjectResponse(BaseModel):
     scene: Optional[SceneJSON] = None
     metadata: SavedProjectMetadata
     history: list[dict] = Field(default_factory=list)
+
+
+class ReferenceResponse(BaseModel):
+    metadata: ReferenceMetadata
+    project: ProjectJSON
 
 
 class SceneResponse(BaseModel):

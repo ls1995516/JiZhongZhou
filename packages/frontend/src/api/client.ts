@@ -2,6 +2,8 @@
 
 import type {
   CreateProjectRequest,
+  ReferenceMetadata,
+  ReferenceResponse,
   SaveProjectRequest,
   SavedProjectMetadata,
   SavedProjectResponse,
@@ -36,6 +38,20 @@ export async function createProject(
 
 export async function getProject(id: string): Promise<SavedProjectResponse> {
   return request<SavedProjectResponse>(`/projects/${id}`);
+}
+
+export async function listReferences(): Promise<ReferenceMetadata[]> {
+  return request<ReferenceMetadata[]>("/references");
+}
+
+export async function getReference(id: string): Promise<ReferenceResponse> {
+  return request<ReferenceResponse>(`/references/${id}`);
+}
+
+export async function loadReference(id: string): Promise<ProjectResponse> {
+  return request<ProjectResponse>(`/references/${id}/load`, {
+    method: "POST",
+  });
 }
 
 export async function listProjects(): Promise<SavedProjectMetadata[]> {

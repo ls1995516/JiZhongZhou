@@ -5,8 +5,10 @@ export function Toolbar() {
   const projectName = useAppStore((s) => s.project?.metadata.name);
   const savedProjects = useAppStore((s) => s.savedProjects);
   const showInspector = useAppStore((s) => s.showInspector);
+  const showReferences = useAppStore((s) => s.showReferences);
   const isSaving = useAppStore((s) => s.isSaving);
   const toggleInspector = useAppStore((s) => s.toggleInspector);
+  const toggleReferences = useAppStore((s) => s.toggleReferences);
   const createProject = useAppStore((s) => s.createProject);
   const loadProject = useAppStore((s) => s.loadProject);
   const saveProject = useAppStore((s) => s.saveProject);
@@ -47,6 +49,9 @@ export function Toolbar() {
         </select>
         <button onClick={toggleInspector}>
           {showInspector ? "Hide" : "Show"} Inspector
+        </button>
+        <button onClick={toggleReferences}>
+          {showReferences ? "Hide" : "Show"} References
         </button>
       </div>
     </div>

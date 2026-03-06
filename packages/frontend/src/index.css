@@ -199,6 +199,70 @@ body,
 
 /* ---------- 3D Viewer ---------- */
 
+.reference-panel {
+  width: 280px;
+  min-width: 240px;
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.reference-panel h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.reference-panel__empty {
+  color: var(--text-muted);
+}
+
+.reference-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reference-card {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.reference-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.reference-card__header span,
+.reference-card__tags,
+.reference-card__description {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.reference-card__description,
+.reference-card__tags {
+  margin-bottom: 8px;
+}
+
+.reference-card button {
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .viewer-panel {
   flex: 1;
   min-width: 0;

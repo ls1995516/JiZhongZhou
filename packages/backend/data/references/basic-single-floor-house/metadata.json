@@ -1,0 +1,13 @@
+{
+  "id": "basic-single-floor-house",
+  "title": "Basic Single Floor House",
+  "description": "A simple one-story rectangular house footprint that can be used as a starting point for small residential designs.",
+  "tags": [
+    "residential",
+    "single-floor",
+    "starter"
+  ],
+  "created_by": "codex",
+  "updated_by": "codex",
+  "version": "1.0.0"
+}

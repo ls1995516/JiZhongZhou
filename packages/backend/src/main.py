@@ -14,14 +14,17 @@ from .graphs.geometry_compilation import build_geometry_compilation_graph
 from .graphs.project_authoring import build_project_authoring_graph
 from .services.agent_provider import create_agent_provider
 from .services.project_service import ProjectService
+from .services.reference_service import ReferenceService
 from .services.scene_service import SceneService
 from .storage.project_store import FileProjectStore
+from .storage.reference_store import FileReferenceStore
 from .validators.project_validator import DefaultProjectValidator
 from .validators.scene_validator import DefaultSceneValidator
 
 logging.basicConfig(level=logging.INFO)
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "projects"
+PROJECTS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "projects"
+REFERENCES_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "references"
 
 
 def create_app() -> FastAPI:
@@ -40,7 +43,8 @@ def create_app() -> FastAPI:
     )
 
     # --- Dependency wiring ---
-    store = FileProjectStore(base_dir=DATA_DIR)
+    store = FileProjectStore(base_dir=PROJECTS_DATA_DIR)
+    reference_store = FileReferenceStore(base_dir=REFERENCES_DATA_DIR)
     project_validator = DefaultProjectValidator()
     scene_validator = DefaultSceneValidator()
     compiler = DefaultSceneCompiler()
@@ -51,6 +55,7 @@ def create_app() -> FastAPI:
     agent = create_agent_provider()
 
     project_service = ProjectService(store=store, validator=project_validator)
+    reference_service = ReferenceService(store=reference_store, project_service=project_service)
     scene_service = SceneService(compiler=compiler)
 
     # --- Build LangGraph workflows ---
@@ -67,6 +72,7 @@ def create_app() -> FastAPI:
     # --- Routes ---
     router = create_router(
         project_service=project_service,
+        reference_service=reference_service,
         scene_service=scene_service,
         authoring_graph=authoring_graph,
         compilation_graph=compilation_graph,

@@ -1,0 +1,50 @@
+{
+  "version": "0.1.0",
+  "id": "reference-basic-single-floor-house",
+  "metadata": {
+    "name": "Basic Single Floor House",
+    "description": "Reference layout for a simple one-story house.",
+    "created_at": "2026-03-06T00:00:00",
+    "updated_at": "2026-03-06T00:00:00"
+  },
+  "site": {
+    "dimensions": {
+      "x": 40,
+      "y": 40
+    },
+    "elevation": 0
+  },
+  "building": {
+    "floors": [
+      {
+        "id": "floor-1",
+        "label": "Ground Floor",
+        "elevation": 0,
+        "height": 3,
+        "outline": {
+          "points": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 12,
+              "y": 0
+            },
+            {
+              "x": 12,
+              "y": 8
+            },
+            {
+              "x": 0,
+              "y": 8
+            }
+          ]
+        },
+        "walls": [],
+        "rooms": []
+      }
+    ],
+    "roof_type": "flat"
+  }
+}

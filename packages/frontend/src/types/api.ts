@@ -17,7 +17,22 @@ export interface SaveProjectRequest {
   scene?: SceneJSON | null;
 }
 
+export interface ReferenceMetadata {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  created_by: string;
+  updated_by: string;
+  version: string;
+}
+
 export interface ProjectResponse {
+  project: ProjectJSON;
+}
+
+export interface ReferenceResponse {
+  metadata: ReferenceMetadata;
   project: ProjectJSON;
 }
 
